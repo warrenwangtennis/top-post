@@ -1,6 +1,5 @@
 import torch
-import torch.nn.functional as F
-
+from os import path
 
 class L2Loss(torch.nn.Module):
 	def forward(self, output, target):
@@ -41,17 +40,13 @@ model_factory = {
 
 
 def save_model(model):
-	from torch import save
-	from os import path
 	for n, m in model_factory.items():
 		if isinstance(model, m):
-			return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), '%s.th' % n))
+			return torch.save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), '%s.th' % n))
 	raise ValueError("model type '%s' not supported!" % str(type(model)))
 
 
 def load_model(model):
-	from torch import load
-	from os import path
 	r = model_factory[model]()
-	r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), '%s.th' % model), map_location='cpu'))
+	r.load_state_dict(torch.load(path.join(path.dirname(path.abspath(__file__)), '%s.th' % model), map_location='cpu'))
 	return r

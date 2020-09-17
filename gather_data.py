@@ -7,14 +7,19 @@ import pandas as pd
 
 reddit = praw.Reddit()
 
+# posts = []
+threads = []
+done = []
+pkl_idx = 0
+start_time = time.time()
+
 class post:
-	checkpoint_times = [x for x in range(2, 60, 2)] + [x for x in range(60, 120, 5)] + [120]
-	# checkpoint_times = [5/60, 10/60, 15/60]
+	checkpoint_times = [x for x in range(2, 62, 2)]
+	# checkpoint_times = [1/15]
 
 	def __init__(self, _id, created_utc):
 		self.id = _id
-		self.created_utc = created_utc
-		# self.time_created = utc_to_time(created_utc)
+		self.time = created_utc
 		self.cur_time_idx = 0
 		self.scores = []
 		self.comments = []
@@ -22,10 +27,21 @@ class post:
 	def utc_to_time(utc):
 		return utc
 
-def manage_post(p):
-	while (p.cur_time_idx < len(post.checkpoint_times)):
+def save_done(done):
+	global pkl_idx
+	df = pd.DataFrame(data=[[x for x in p.scores] + [x for x in p.comments] + [p.time] for p in done], 
+		columns=['scores ' + str(x) for x in post.checkpoint_times] + ['comments ' + str(x) for x in post.checkpoint_times] + ['time'],
+		index=[p.id for p in done])
+
+	df.to_pickle('data-{:02d}.pkl'.format(pkl_idx))
+	print('saved data ' + str(pkl_idx))
+	pkl_idx += 1
+	done = []
+
+def manage_post(p, done):
+	while p.cur_time_idx < len(post.checkpoint_times):
 		now = time.time()
-		seconds_to_checkpoint = (p.created_utc + post.checkpoint_times[p.cur_time_idx] * 60) - now
+		seconds_to_checkpoint = (p.time + post.checkpoint_times[p.cur_time_idx] * 60) - now
 		# print("seconds ", seconds_to_checkpoint)
 		if seconds_to_checkpoint > 0:
 			time.sleep(seconds_to_checkpoint)
@@ -38,20 +54,24 @@ def manage_post(p):
 		# print(p.id, p.scores, p.comments)
 		p.cur_time_idx += 1
 		# print(p.id, " on checkpoint ", p.cur_time_idx)
-posts = []
-threads = []
-start_time = time.time()
+	lock = threading.Lock()
+	with lock:
+		done.append(p)
+		if len(done) >= 32:
+			save_done(done)
+
+
 for submission in reddit.subreddit("askreddit").stream.submissions():
 	now = time.time()
 	# print(submission.title, now, submission.created_utc)
 	if now - submission.created_utc > 15:
 		continue
 	cur_post = post(submission.id, now)
-	thread = threading.Thread(target=manage_post, args=(cur_post,))
+	thread = threading.Thread(target=manage_post, args=(cur_post, done))
 	threads.append(thread)
-	posts.append(cur_post)
+	# posts.append(cur_post)
 	thread.start()
-	if now - start_time > 3600:
+	if now - start_time > 3*60*60:
 		break
 for thread in threads:
 	thread.join()
@@ -60,11 +80,8 @@ for thread in threads:
 # row0 = ['names'] + ['scores ' + str(x) for x in post.checkpoint_times] + ['comments ' + str(x) for x in post.checkpoint_times]
 # output = np.array([row0] + [[p.id] + [x for x in p.scores] + [x for x in p.comments] for p in posts])
 
-df = pd.DataFrame(data=[[x for x in p.scores] + [x for x in p.comments] for p in posts], 
-	columns=['scores ' + str(x) for x in post.checkpoint_times] + ['comments ' + str(x) for x in post.checkpoint_times],
-	index=[p.id for p in posts])
-
-df.to_pickle('data.pkl')
+if done:
+	save_done(done)
 
 # pd.set_option('display.max_rows', None)
 # pd.set_option('display.max_columns', None)
