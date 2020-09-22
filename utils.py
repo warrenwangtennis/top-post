@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 import os
 import pandas as pd
 import torch
@@ -72,10 +72,13 @@ def load_data(dataset_path, num_workers=0, batch_size=128):
 	dataset = PostDataset(dataset_path)
 	return DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True, drop_last=False)
 
-
-def accuracy(outputs, labels):
-	outputs_idx = outputs.max(1)[1].type_as(labels)
-	return outputs_idx.eq(labels).float().mean()
+def load_data_split(dataset_path, num_workers=0, batch_size=128, train_ratio=.9):
+	dataset = PostDataset(dataset_path)
+	train_len = int(len(dataset) * train_ratio)
+	data_split = random_split(dataset, [train_len, len(dataset) - train_len])
+	return (DataLoader(data_split[0], num_workers=num_workers, batch_size=batch_size, shuffle=True),
+			DataLoader(data_split[1], num_workers=num_workers, batch_size=batch_size, shuffle=True)
+		)
 
 if __name__ == '__main__':
 	dataset = PostDataset('big_data_start_9-16-2020-1630-1930')
