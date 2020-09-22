@@ -16,15 +16,18 @@ class L2Loss(torch.nn.Module):
 
 
 class MLPModel(torch.nn.Module):
-	def __init__(self, input_dim, output_dim):
+	def __init__(self, input_dim, output_dim, hidden_dims=[]):
 		super().__init__()
 
-		self.seq = torch.nn.Sequential(
-			torch.nn.Linear(input_dim, 64), 
-			torch.nn.ReLU(), 
-			torch.nn.Linear(64, 64),
-			torch.nn.ReLU(), 
-			torch.nn.Linear(64, output_dim))
+		c = input_dim
+		layers = []
+		for dim in hidden_dims:
+			layers.append(torch.nn.Linear(c, dim))
+			layers.append(torch.nn.ReLU())
+			c = dim
+		layers.append(torch.nn.Linear(c, output_dim))
+
+		self.seq = torch.nn.Sequential(*layers)
 
 	def forward(self, x):
 		"""

@@ -40,21 +40,29 @@ def normalize_timestamp(timestamp):
 class PostDataset(Dataset):
 
 	def __init__(self, dataset_path):
-		# for file_name in os.listdir(dataset_path):
-		#     if file_name.endswith('.pkl'):
-		df = pd.read_pickle(dataset_path + '/data-03.pkl')
-		assert df.shape == (35, 61)
-		# df = df.astype('float32')
-		# print(df)
-		t = torch.empty(df.shape)
-		for i in range(df.shape[0]):
-			for j in range(30):
-				t[i][j] = normalize_starting_score(df.iloc[i, j])
-			for j in range(30, 60):
-				t[i][j] = normalize_starting_comments(df.iloc[i, j])
-			t[i][60] = normalize_timestamp(df.iloc[i, 60])
+		input_df = pd.read_pickle(dataset_path + '/data-951.pkl')
+		assert input_df.shape == (982, 61)
+		output_df = pd.read_pickle(dataset_path + '/output_data.pkl')
+		assert output_df.shape == (982, 2)
+		assert(input_df.index.equals(output_df.index))
 
-		# print(t)
+		# print(output_df)
+		# exit()
+
+
+		input_data = torch.empty(input_df.shape)
+		output_data = torch.empty(output_df.shape)
+		for i in range(input_df.shape[0]):
+			for j in range(30):
+				input_data[i][j] = normalize_starting_score(input_df.iloc[i, j])
+			for j in range(30, 60):
+				input_data[i][j] = normalize_starting_comments(input_df.iloc[i, j])
+			input_data[i][60] = normalize_timestamp(input_df.iloc[i, 60])
+
+			output_data[i][0] = normalize_ending_score(output_df.iloc[i][0])
+			output_data[i][1] = normalize_ending_comments(output_df.iloc[i][1])
+
+		self.data = [*zip(input_data, output_data)]		
 
 	def __len__(self):
 		return len(self.data)
@@ -81,4 +89,9 @@ def load_data_split(dataset_path, num_workers=0, batch_size=128, train_ratio=.9)
 		)
 
 if __name__ == '__main__':
-	dataset = PostDataset('big_data_start_9-16-2020-1630-1930')
+	# dataset = PostDataset('big_data_start_9-16-2020-1630-1930')
+	data_train, data_test = load_data_split('big_data_start_9-16-2020-1630-1930', num_workers=4, batch_size=16)
+	for x, y in data_train:
+		pass
+	for x, y in data_test:
+		pass
